@@ -3,15 +3,20 @@ package ipc
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"net"
 	"os"
 )
 
-var socket net.Conn
+type Ipc struct {
+	Socket net.Conn
+}
+
+func New() *Ipc {
+	return &Ipc{}
+}
 
 // Choose the right directory to the ipc socket and return it
-func GetIpcPath() string {
+func (i *Ipc) GetIpcPath() string {
 	variablesnames := []string{"XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"}
 
 	for _, variablename := range variablesnames {
@@ -25,19 +30,20 @@ func GetIpcPath() string {
 	return "/tmp"
 }
 
-func CloseSocket() error {
-	if socket != nil {
-		socket.Close()
-		socket = nil
+func (i *Ipc) CloseSocket() error {
+	if i.Socket != nil {
+		i.Socket.Close()
+		i.Socket = nil
 	}
 	return nil
 }
 
 // Read the socket response
-func Read() string {
+func (i *Ipc) Read() (string, error) {
 	buf := make([]byte, 512)
-	payloadlength, err := socket.Read(buf)
+	payloadlength, err := i.Socket.Read(buf)
 	if err != nil {
+		return "", err
 		//fmt.Println("Nothing to read")
 	}
 
@@ -46,28 +52,25 @@ func Read() string {
 		buffer.WriteByte(buf[i])
 	}
 
-	return buffer.String()
+	return buffer.String(), nil
 }
 
 // Send opcode and payload to the unix socket
-func Send(opcode int, payload string) string {
+func (i *Ipc) Send(opcode int, payload string) (string, error) {
 	buf := new(bytes.Buffer)
 
-	err := binary.Write(buf, binary.LittleEndian, int32(opcode))
-	if err != nil {
-		fmt.Println(err)
+	if err := binary.Write(buf, binary.LittleEndian, int32(opcode)); err != nil {
+		return "", err
 	}
 
-	err = binary.Write(buf, binary.LittleEndian, int32(len(payload)))
-	if err != nil {
-		fmt.Println(err)
+	if err := binary.Write(buf, binary.LittleEndian, int32(len(payload))); err != nil {
+		return "", err
 	}
 
 	buf.Write([]byte(payload))
-	_, err = socket.Write(buf.Bytes())
-	if err != nil {
-		fmt.Println(err)
+	if _, err := i.Socket.Write(buf.Bytes()); err != nil {
+		return "", err
 	}
 
-	return Read()
+	return i.Read()
 }

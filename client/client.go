@@ -9,39 +9,48 @@ import (
 	"github.com/ciderapp/rich-go/ipc"
 )
 
+type Client struct {
+	Session *interface{}
+	Ipc     ipc.Ipc
+}
+
+func New() *Client {
+	return &Client{}
+}
+
 var logged bool
 
 // Login sends a handshake in the socket and returns an error or nil
-func Login(clientid string) error {
+func (c *Client) Login(clientid string) error {
 	if !logged {
 		payload, err := json.Marshal(Handshake{"1", clientid})
 		if err != nil {
 			return err
 		}
 
-		err = ipc.OpenSocket()
+		err = c.Ipc.OpenSocket()
 		if err != nil {
 			return err
 		}
 
 		// TODO: Response should be parsed
-		ipc.Send(0, string(payload))
+		c.Ipc.Send(0, string(payload))
 	}
 	logged = true
 
 	return nil
 }
 
-func Logout() {
+func (c *Client) Logout() {
 	logged = false
 
-	err := ipc.CloseSocket()
+	err := c.Ipc.CloseSocket()
 	if err != nil {
 		panic(err)
 	}
 }
 
-func SetActivity(activity Activity) error {
+func (c *Client) SetActivity(activity Activity) error {
 	if !logged {
 		return nil
 	}
@@ -52,7 +61,7 @@ func SetActivity(activity Activity) error {
 			os.Getpid(),
 			mapActivity(&activity),
 		},
-		getNonce(),
+		c.getNonce(),
 	})
 
 	if err != nil {
@@ -60,11 +69,11 @@ func SetActivity(activity Activity) error {
 	}
 
 	// TODO: Response should be parsed
-	ipc.Send(1, string(payload))
+	c.Ipc.Send(1, string(payload))
 	return nil
 }
 
-func getNonce() string {
+func (c *Client) getNonce() string {
 	buf := make([]byte, 16)
 	_, err := rand.Read(buf)
 	if err != nil {

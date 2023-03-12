@@ -8,13 +8,17 @@ import (
 )
 
 func main() {
-	err := client.Login("DISCORD_APP_ID")
+	// Create a new client object
+
+	c := client.New()
+
+	err := c.Login("DISCORD_APP_ID")
 	if err != nil {
 		panic(err)
 	}
 
 	now := time.Now()
-	err = client.SetActivity(client.Activity{
+	err = c.SetActivity(client.Activity{
 		State:      "Heyy!!!",
 		Details:    "I'm running on rich-go :)",
 		LargeImage: "largeimageid",
