@@ -15,6 +15,18 @@ func New() *Ipc {
 	return &Ipc{}
 }
 
+func (i *Ipc) IsOpen() bool {
+	if i.Socket == nil {
+		return false
+	}
+	buf := make([]byte, 1024)
+	// i.Socket.SetReadDeadline(time.Now().Add(1 * time.Second))
+	if _, err := i.Socket.Read(buf); err != nil {
+		return false
+	}
+	return true
+}
+
 // Choose the right directory to the ipc socket and return it
 func (i *Ipc) GetIpcPath() string {
 	variablesnames := []string{"XDG_RUNTIME_DIR", "TMPDIR", "TMP", "TEMP"}
@@ -43,7 +55,6 @@ func (i *Ipc) Read() (string, error) {
 	buf := make([]byte, 512)
 	payloadlength, err := i.Socket.Read(buf)
 	if err != nil {
-		return "", err
 		//fmt.Println("Nothing to read")
 	}
 
@@ -59,9 +70,7 @@ func (i *Ipc) Read() (string, error) {
 func (i *Ipc) Send(opcode int, payload string) (string, error) {
 	buf := new(bytes.Buffer)
 
-	if err := binary.Write(buf, binary.LittleEndian, int32(opcode)); err != nil {
-		return "", err
-	}
+	binary.Write(buf, binary.LittleEndian, int32(opcode))
 
 	if err := binary.Write(buf, binary.LittleEndian, int32(len(payload))); err != nil {
 		return "", err
